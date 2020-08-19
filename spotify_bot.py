@@ -49,6 +49,8 @@ import datetime
 import time
 import spotipy
 import teamtalk
+import utils
+from utils import *
 from spotipy.oauth2 import SpotifyOAuth
 
 # Globals

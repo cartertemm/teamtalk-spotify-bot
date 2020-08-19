@@ -1,4 +1,4 @@
-# Spotify Bot
+# TeamTalk Spotify Bot
 
 A text only TeamTalk controller for Spotify, allowing management of playback on a host machine.
 
