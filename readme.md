@@ -27,6 +27,10 @@ You should then be able to run the program:
 python spotify-bot.py
 ```
 
+If running for the first time, you'll get a message informing you that a configuration was successfully created. Open up config.ini in a text editor of your choice, follow the instructions, save and run the script again.
+Assuming nothing went wrong a Spotify account authorization page will have been opened in your browser. Follow the steps.
+When you return to the command window, select a playback device.
+
 ### Routing Audio
 
 A full setup guide would be out of scope, but the basics are thus.
@@ -41,9 +45,3 @@ Note that Spotify will only show up in the list if music is playing or has been 
 Loopback can do the same.
 
 Lastly, start a TeamTalk instance for streaming and input from your capture device under sound system.
-
-### Authenticating
-
-If this is your first time running the script, assuming nothing went wrong a Spotify account authorization page will have been opened in your browser. Follow the steps.
-
-When you return to the command window, select a playback device.

@@ -1,14 +1,3 @@
-# constants
-host = "example.com"
-port = 10333
-nickname = "Spotify Bot"
-username = "admin"
-password = "password"
-client_name = "TeamTalkBotClient"
-# users disallowed from sending commands as a means of abuse prevention
-banned_users = []
-
-
 """spotify_bot.py
 
 A TeamTalk controller for Spotify.
@@ -17,11 +6,9 @@ Also requires another TeamTalk instance capable of routing system audio. The
 process for doing so is out of the scope of these notes. It is my hope that 
 this will someday be unnecessary, however.
 
-Finally, change the host, port and login information to match you or your friends' server.
-To automatically join a channel on login, add
-t.join(channel)
-below the call to t.login. For example
-t.join("/Stereo/")"""
+Consult the readme for comprehensive setup instructions.
+Basically just run this script, edit the generated configuration file, then run again.
+"""
 
 help = """Every parameter enclosed in brackets ([]) is optional
 play [uri]: Starts playback. If uri is provided, starts playing from the specified spotify link, can start with http:// or spotify:.
@@ -43,18 +30,90 @@ client_secret = "f090e040c95842e3a31f26d86bf627a8"
 redirect_uri = "http://localhost:9999"
 scopes = "user-modify-playback-state user-read-currently-playing user-read-playback-state user-read-private"
 cache_path = "spotify.cache"
+client_name = "TeamTalkBotClient"
 
 
+import sys
 import datetime
 import time
+import json
+import configparser
 import spotipy
 import teamtalk
 import utils
 from utils import *
 from spotipy.oauth2 import SpotifyOAuth
 
+spec = """# TeamTalk Spotify Bot Configuration
+# Sections starting with # are comments and not processed directly
+# Uncomment (remove the # from) every line that is not an explanation
+
+[general]
+# The server's address
+# host = example.com
+# The server's TCP port
+# port = 10333
+# Login Info
+# nickname = Spotify Bot
+# username = me
+# password = password
+# a list of users disallowed from sending messages for abuse prevention
+# example: ["bob", "Alice"]
+# banned_users = []
+# The case sensative name, or ID, of a channel to join on login
+# /Stereo/ or 1 are valid
+# autojoin = 
+
+[advanced]
+# Only edit if you know what you're doing, as things can break easily
+# client_id = 
+# client_secret = 
+# redirect_uri = 
+# cache_path = 
+"""
+
 # Globals
+config = None
+## Config sections for convenience
+general = None
+advanced = None
+
+banned_users = None
 t = teamtalk.TeamTalkServer()
+
+
+def load_config(file="config.ini"):
+	global config, general, advanced, banned_users
+	try:
+		config = configparser.ConfigParser()
+	except configobj.Error as exc:
+		print("There was an error validating the config")
+		print(exc)
+	loaded = config.read(file)
+	if not loaded:
+		print(file + " does not exist")
+		# messy but gets the job done for now
+		with open(file, "w") as f:
+			f.write(spec)
+		print("Created a configuration file")
+		print("Edit it and try running again")
+		sys.exit(1)
+	if not "general" in config.sections() or not "advanced" in config.sections():
+		print("Malformed configuration file. Fix or delete it and try again.")
+		sys.exit(1)
+	general = config["general"]
+	advanced = config["advanced"]
+	# check for only the bare minimum required to run
+	if (
+		not general.get("host")
+		or not general.get("port")
+		or not general.get("nickname")
+	):
+		print("Some required values were not found in the configuration. Fix or delete it and try again.")
+		sys.exit(1)
+	# Expand to a list
+	# hack: Since configparser doesn't support lists automatically, try feeding to json
+	banned_users = json.loads(general.get("banned_users", "[]"))
 
 
 class SpotifyBot:
@@ -66,11 +125,11 @@ class SpotifyBot:
 
 	def init_spotify(self):
 		self.auth = SpotifyOAuth(
-			client_id=client_id,
-			client_secret=client_secret,
-			redirect_uri=redirect_uri,
+			client_id=advanced.get("client_id", client_id),
+			client_secret=advanced.get("client_secret", client_secret),
+			redirect_uri=advanced.get("redirect_uri", redirect_uri),
 			scope=scopes,
-			cache_path=cache_path,
+			cache_path=advanced.get("cache_path", cache_path),
 		)
 		self.spotify = spotipy.Spotify(auth_manager=self.auth)
 
@@ -139,9 +198,7 @@ class SpotifyBot:
 	@preserve_tracebacks
 	def command_volume(self, val):
 		if not val:
-			return (
-				str(self.spotify.current_playback()["device"]["volume_percent"]) + "%"
-			)
+			return str(self.spotify.current_playback()["device"]["volume_percent"]) + "%"
 		val = val.replace("%", "")
 		if not val.isdigit():
 			return "percentage argument must be a digit"
@@ -157,9 +214,7 @@ class SpotifyBot:
 		items = results["artists"]["items"]
 		if len(items) > 0:
 			item = items[0]
-			self.spotify.start_playback(
-				device_id=self.device_id, context_uri=item["uri"]
-			)
+			self.spotify.start_playback(device_id=self.device_id, context_uri=item["uri"])
 			return "playing " + item["name"]
 		else:
 			return "unable to find an artist by that name"
@@ -182,9 +237,7 @@ class SpotifyBot:
 		playlists = results["playlists"]["items"]
 		if len(playlists) > 0:
 			item = playlists[0]
-			self.spotify.start_playback(
-				context_uri=item["uri"], device_id=self.device_id
-			)
+			self.spotify.start_playback(context_uri=item["uri"], device_id=self.device_id)
 			return f"playing {item['name']} by {item['owner']['display_name']}\n{item['description']}"
 
 	@preserve_tracebacks
@@ -234,14 +287,12 @@ def message(server, params):
 	if params["type"] != teamtalk.USER_MSG:
 		return  # nothing to do
 	if username in banned_users:
-		server.user_message(
-			user, "You do not currently have permission to use this bot"
-		)
+		server.user_message(user, "You do not currently have permission to use this bot")
 		return
 	parsed = str(content).split(" ")
 	# our command parsing assumes a single message needs to be sent
 	# due to TeamTalk message size constraints, we need to split these up
-	if parsed[0].lower()=="help":
+	if parsed[0].lower() == "help":
 		for line in help.splitlines():
 			# spam
 			server.user_message(user, line)
@@ -255,14 +306,32 @@ def message(server, params):
 		server.user_message(user, "unrecognized command, type help for options")
 
 
-if __name__ == "__main__":
+def main():
+	global sp
+	load_config()
 	sp = SpotifyBot()
 	sp.init_spotify()
 	sp.select_device()
 	print("Connecting to server...")
-	t.set_connection_info(host, port)
+	t.set_connection_info(general.get("host"), general.get("port"))
 	t.connect()
-	t.login(nickname, username, password, client_name)
+	t.login(
+		general.get("nickname"),
+		general.get("username", ""),
+		general.get("password", ""),
+		client_name,
+	)
 	print("login success")
-	t.join(2)
+	autojoin = general.get("autojoin")
+	if autojoin != None:
+		# ID
+		if autojoin.isdigit():
+			autojoin = int(autojoin)
+		t.join(autojoin)
 	t.handle_messages(1)
+
+
+# the Spotify bot object
+sp = None
+if __name__ == "__main__":
+	main()
