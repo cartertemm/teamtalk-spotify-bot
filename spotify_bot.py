@@ -34,6 +34,7 @@ client_name = "TeamTalkBotClient"
 
 
 import sys
+import os.path
 import datetime
 import time
 import json
@@ -82,7 +83,7 @@ banned_users = None
 t = teamtalk.TeamTalkServer()
 
 
-def load_config(file="config.ini"):
+def load_config(file):
 	global config, general, advanced, banned_users
 	try:
 		config = configparser.ConfigParser()
@@ -308,7 +309,14 @@ def message(server, params):
 
 def main():
 	global sp
-	load_config()
+	path = "config.ini"
+	if len(sys.argv) > 1:
+		path = sys.argv[1]
+		if not os.path.isfile(path):
+			print("The provided configuration file does not exist")
+			print("Dry run for config.ini")
+			sys.exit(1)
+	load_config(path)
 	sp = SpotifyBot()
 	sp.init_spotify()
 	sp.select_device()

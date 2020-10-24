@@ -31,6 +31,12 @@ If running for the first time, you'll get a message informing you that a configu
 Assuming nothing went wrong a Spotify account authorization page will have been opened in your browser. Follow the steps.
 When you return to the command window, select a playback device.
 
+You can optionally provide the name of a configuration file as a parameter for easily keeping track of multiple servers:
+
+```
+python spotify-bot.py uspublic.ini
+```
+
 ### Routing Audio
 
 A full setup guide would be out of scope, but the basics are thus.
