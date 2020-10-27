@@ -136,7 +136,9 @@ class SpotifyBot:
 
 	def find_device(self):
 		"""Blocks until a device becomes available for playback."""
-		while not (devices := self.spotify.devices()["devices"]):
+		devices = None
+		while not devices:
+			devices = self.spotify.devices()["devices"]
 			time.sleep(1)
 		return devices
 
