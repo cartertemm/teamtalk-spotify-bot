@@ -64,6 +64,8 @@ spec = """# TeamTalk Spotify Bot Configuration
 # The case sensative name, or ID, of a channel to join on login
 # /Stereo/ or 1 are valid
 # autojoin = 
+# The password for the channel that will be automatically joined
+# autojoin_pass = 
 
 [advanced]
 # Only edit if you know what you're doing, as things can break easily
@@ -333,11 +335,12 @@ def main():
 	)
 	print("login success")
 	autojoin = general.get("autojoin")
+	autojoin_pass = general.get("autojoin_pass", "")
 	if autojoin != None:
 		# ID
 		if autojoin.isdigit():
 			autojoin = int(autojoin)
-		t.join(autojoin)
+		t.join(autojoin, password=autojoin_pass)
 	t.handle_messages(1)
 
 
